@@ -1,0 +1,13 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+data/
+*.db
+*.sqlite
+.streamlit/credentials.toml
+debug_loader.py
+test_*.py
+check_data.py
+reload_data.py
