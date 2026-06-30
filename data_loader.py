@@ -82,7 +82,8 @@ def load_excel(file_path_or_buffer) -> Tuple[int, int]:
     merchant_count = 0
     row_count = 0
 
-    with db.get_conn() as conn:
+    conn = db.get_conn()
+    try:
         for _, row in df.iterrows():
             name = str(row.get(MERCHANT_COL, "")).strip()
             if not name or name in ("nan", "온라인 전체", "포인트플러스"):
@@ -130,5 +131,12 @@ def load_excel(file_path_or_buffer) -> Tuple[int, int]:
                 row_count += 1
 
             db.upsert_monthly(conn, monthly_rows)
+
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
     return merchant_count, row_count

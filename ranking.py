@@ -198,7 +198,11 @@ def _render_merchant_trend(filtered_df: pd.DataFrame):
         months = st.select_slider("표시 기간", options=[6, 12, 18, 24, 30],
                                    value=12, key="trend_months")
 
-    row = filtered_df[filtered_df["가맹점명"] == selected].iloc[0]
+    match = filtered_df[filtered_df["가맹점명"] == selected]
+    if match.empty:
+        st.warning("선택한 가맹점 데이터를 찾을 수 없습니다.")
+        return
+    row = match.iloc[0]
     merchant_id = int(row["id"])
     data = db.get_monthly_data(merchant_id, months=months)
 

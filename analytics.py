@@ -188,9 +188,7 @@ def _render_portfolio_overview(full_df: pd.DataFrame, metrics_df: pd.DataFrame):
         st.plotly_chart(fig, use_container_width=True)
 
     with col_cat:
-        cat_df = cur.groupby(
-            full_df.loc[full_df["year_month"] == latest_month, "카테고리"]
-        )["거래액"].sum().reset_index()
+        cat_df = cur.groupby("카테고리")["거래액"].sum().reset_index()
         cat_df.columns = ["카테고리", "거래액"]
         cat_df = cat_df.sort_values("거래액", ascending=False).head(8)
         fig = px.bar(cat_df, x="거래액", y="카테고리", orientation="h",

@@ -255,7 +255,7 @@ def _render_strategy(merchant: dict, monthly_data: list[dict]):
             pass
 
     if not has_llm():
-        st.info("API 키 미설정 — `.env`에 ANTHROPIC_API_KEY 또는 OPENAI_API_KEY를 입력해주세요.")
+        st.info("API 키 미설정 — `.env`에 GEMINI_API_KEY (무료) 또는 ANTHROPIC_API_KEY / OPENAI_API_KEY를 입력해주세요.")
         _render_strategy_history(merchant)
         return
 
@@ -346,13 +346,15 @@ def _render_strategy_history(merchant: dict):
             if s["memo"]:
                 st.markdown(f"**📝 메모:** {s['memo']}")
 
-            col_contact, col_edit = st.columns([1, 4])
+            col_contact, _ = st.columns([1, 4])
             if col_contact.button("📞 접촉 완료", key=f"contact_{s['id']}"):
                 db.mark_contacted(s["id"])
                 st.success("접촉 기록 저장됨")
                 st.rerun()
 
-            new_memo = col_edit.text_input("메모 수정", value=s["memo"] or "",
-                                           key=f"edit_memo_{s['id']}")
-            if new_memo != (s["memo"] or ""):
+            new_memo = st.text_input("메모 수정", value=s["memo"] or "",
+                                     key=f"edit_memo_{s['id']}")
+            if st.button("💾 메모 저장", key=f"save_memo_{s['id']}"):
                 db.update_strategy_memo(s["id"], new_memo)
+                st.success("메모 저장됨")
+                st.rerun()

@@ -80,8 +80,8 @@ def evaluate_triggers(monthly_data: list[dict], merchant: dict) -> list[dict]:
         if prev_promo and not cur_promo:
             fired.append({**TRIGGERS[3], "detail": "전월 프로모션 종료"})
 
-    # T-05: 신규 가맹점 + 데이터 3개월
-    if merchant.get("기존신규", "").strip() in ("신규", "신규가맹점") and len(monthly_data) == 3:
+    # T-05: 신규 가맹점 + 데이터 3~6개월 (초기 온보딩 기간)
+    if merchant.get("기존신규", "").strip() in ("신규", "신규가맹점") and 3 <= len(monthly_data) <= 6:
         fired.append({**TRIGGERS[4], "detail": "신규 가맹점 3개월 데이터 축적"})
 
     # T-06: YoY -15%
