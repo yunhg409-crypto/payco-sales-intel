@@ -131,10 +131,12 @@ def load_excel(file_path_or_buffer) -> Tuple[int, int]:
                 row_count += 1
 
             db.upsert_monthly(conn, monthly_rows)
-
-        conn.commit()
+            conn.commit()  # 가맹점마다 커밋 (timeout 방지)
     except Exception:
-        conn.rollback()
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         raise
     finally:
         conn.close()

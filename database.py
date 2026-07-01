@@ -19,7 +19,7 @@ def get_conn():
     if IS_POSTGRES:
         import psycopg2, psycopg2.extras
         url = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-        conn = psycopg2.connect(url)
+        conn = psycopg2.connect(url, options="-c statement_timeout=0 -c lock_timeout=0")
         conn.autocommit = False
         return conn
     else:
