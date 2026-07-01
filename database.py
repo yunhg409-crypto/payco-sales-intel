@@ -75,7 +75,9 @@ def init_db():
                     name TEXT NOT NULL UNIQUE,
                     industry TEXT, category TEXT, manager TEXT,
                     channel TEXT, merchant_type TEXT
-                );
+                )
+            """)
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS monthly_data (
                     id SERIAL PRIMARY KEY,
                     merchant_id INTEGER NOT NULL REFERENCES merchants(id),
@@ -84,21 +86,25 @@ def init_db():
                     count INTEGER DEFAULT 0,
                     has_promo INTEGER DEFAULT 0,
                     UNIQUE(merchant_id, year_month)
-                );
+                )
+            """)
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS news_cache (
                     id SERIAL PRIMARY KEY,
                     merchant_id INTEGER NOT NULL REFERENCES merchants(id),
                     cache_date TEXT NOT NULL,
                     summary TEXT, links TEXT, expires_at TEXT NOT NULL,
                     UNIQUE(merchant_id, cache_date)
-                );
+                )
+            """)
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS strategies (
                     id SERIAL PRIMARY KEY,
                     merchant_id INTEGER NOT NULL REFERENCES merchants(id),
                     trigger_code TEXT, trigger_label TEXT,
                     strategy_content TEXT, memo TEXT DEFAULT '',
                     created_at TEXT NOT NULL, last_contact_at TEXT
-                );
+                )
             """)
         else:
             cur.executescript("""
