@@ -173,23 +173,24 @@ def upsert_merchant(conn, data: dict) -> int:
 
 
 def upsert_monthly(conn, rows: list[dict]):
-    ph = _ph()
-    for r in rows:
-        if IS_POSTGRES:
-            cur = conn.cursor()
-            cur.execute(f"""
-                INSERT INTO monthly_data (merchant_id, year_month, amount, count, has_promo)
-                VALUES ({_phs(5)})
-                ON CONFLICT(merchant_id, year_month) DO UPDATE SET
-                    amount=EXCLUDED.amount, count=EXCLUDED.count, has_promo=EXCLUDED.has_promo
-            """, (r["merchant_id"], r["year_month"], r["거래액"], r["거래건수"], r["프로모션여부"]))
-        else:
-            conn.execute(f"""
-                INSERT INTO monthly_data (merchant_id, year_month, amount, count, has_promo)
-                VALUES ({_phs(5)})
-                ON CONFLICT(merchant_id, year_month) DO UPDATE SET
-                    amount=excluded.amount, count=excluded.count, has_promo=excluded.has_promo
-            """, (r["merchant_id"], r["year_month"], r["거래액"], r["거래건수"], r["프로모션여부"]))
+    if not rows:
+        return
+    values = [(r["merchant_id"], r["year_month"], r["거래액"], r["거래건수"], r["프로모션여부"]) for r in rows]
+    if IS_POSTGRES:
+        cur = conn.cursor()
+        cur.executemany(f"""
+            INSERT INTO monthly_data (merchant_id, year_month, amount, count, has_promo)
+            VALUES ({_phs(5)})
+            ON CONFLICT(merchant_id, year_month) DO UPDATE SET
+                amount=EXCLUDED.amount, count=EXCLUDED.count, has_promo=EXCLUDED.has_promo
+        """, values)
+    else:
+        conn.executemany(f"""
+            INSERT INTO monthly_data (merchant_id, year_month, amount, count, has_promo)
+            VALUES ({_phs(5)})
+            ON CONFLICT(merchant_id, year_month) DO UPDATE SET
+                amount=excluded.amount, count=excluded.count, has_promo=excluded.has_promo
+        """, values)
 
 
 def get_merchants(manager: Optional[str] = None) -> list[dict]:
