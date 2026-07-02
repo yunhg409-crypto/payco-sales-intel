@@ -16,25 +16,28 @@ import database as db
 # 데이터 빌더
 # ──────────────────────────────────────────────────────────────
 
+@st.cache_data(ttl=300, show_spinner="데이터 로딩 중...")
 def _build_full_df() -> pd.DataFrame:
-    """모든 가맹점 × 모든 월 데이터를 flat DataFrame으로 반환."""
-    merchants = db.get_merchants()
+    """모든 가맹점 × 모든 월 데이터를 flat DataFrame으로 반환. (5분 캐시)"""
+    merchants, monthly_all = db.get_all_data()  # DB 쿼리 2번으로 전체 로드
+    m_map = {m["id"]: m for m in merchants}
     rows = []
-    for m in merchants:
-        data = db.get_monthly_data(m["id"])
-        for d in data:
-            rows.append({
-                "id": m["id"],
-                "가맹점명": m["가맹점명"],
-                "업종": m.get("업종") or "-",
-                "카테고리": m.get("카테고리") or "-",
-                "담당자": m.get("담당자") or "-",
-                "기존신규": m.get("기존신규") or "-",
-                "year_month": d["year_month"],
-                "거래액": d["거래액"],
-                "거래건수": d["거래건수"],
-                "프로모션여부": d["프로모션여부"],
-            })
+    for d in monthly_all:
+        m = m_map.get(d["merchant_id"])
+        if not m:
+            continue
+        rows.append({
+            "id": m["id"],
+            "가맹점명": m["가맹점명"],
+            "업종": m.get("업종") or "-",
+            "카테고리": m.get("카테고리") or "-",
+            "담당자": m.get("담당자") or "-",
+            "기존신규": m.get("기존신규") or "-",
+            "year_month": d["year_month"],
+            "거래액": d["거래액"],
+            "거래건수": d["거래건수"],
+            "프로모션여부": d["프로모션여부"],
+        })
     df = pd.DataFrame(rows)
     if df.empty:
         return df

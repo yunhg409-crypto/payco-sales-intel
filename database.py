@@ -243,6 +243,20 @@ def get_monthly_data(merchant_id: int, months: int = 0) -> list[dict]:
     return [_normalize_monthly(r) for r in rows]
 
 
+def get_all_data() -> tuple[list[dict], list[dict]]:
+    """가맹점 + 전체 월별 데이터를 각각 1번의 쿼리로 반환. (130번 → 2번)"""
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM merchants ORDER BY name")
+        merchants = [_normalize_merchant(r) for r in _rows(cur)]
+        cur.execute("SELECT * FROM monthly_data ORDER BY merchant_id, year_month")
+        monthly_rows = [_normalize_monthly(r) | {"merchant_id": r["merchant_id"]} for r in _rows(cur)]
+    finally:
+        conn.close()
+    return merchants, monthly_rows
+
+
 def get_category_monthly(category: str) -> list[dict]:
     ph = _ph()
     conn = get_conn()

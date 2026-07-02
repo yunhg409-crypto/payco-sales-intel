@@ -5,13 +5,19 @@ from plotly.subplots import make_subplots
 import database as db
 
 
+@st.cache_data(ttl=300, show_spinner="데이터 로딩 중...")
 def _build_summary_df(months_back: int = 2) -> pd.DataFrame:
-    """모든 가맹점의 최근 데이터를 종합해 순위 DataFrame 반환."""
-    merchants = db.get_merchants()
+    """모든 가맹점의 최근 데이터를 종합해 순위 DataFrame 반환. (5분 캐시)"""
+    merchants, monthly_all = db.get_all_data()  # DB 쿼리 2번으로 전체 로드
+    # merchant_id별로 월별 데이터 그룹핑
+    from collections import defaultdict
+    monthly_map = defaultdict(list)
+    for d in monthly_all:
+        monthly_map[d["merchant_id"]].append(d)
     rows = []
 
     for m in merchants:
-        data = db.get_monthly_data(m["id"])
+        data = monthly_map.get(m["id"], [])
         if len(data) < 2:
             continue
 

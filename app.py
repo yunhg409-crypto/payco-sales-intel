@@ -46,6 +46,7 @@ def render_sidebar():
                 m_cnt, r_cnt = data_loader.load_excel(uploaded, progress_callback=on_progress)
                 progress_bar.progress(1.0, text="완료!")
                 status_text.empty()
+                st.cache_data.clear()  # 새 데이터 반영을 위해 캐시 초기화
                 st.success(f"✅ 완료: 가맹점 {m_cnt}개, {r_cnt:,}건 적재")
                 st.rerun()
             except ValueError as e:

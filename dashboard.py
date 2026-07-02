@@ -53,15 +53,32 @@ def _fmt_pct(val: Optional[float], positive_good: bool = True) -> str:
     return f"{sign}{val*100:.1f}%"
 
 
+@st.cache_data(ttl=300)
+def _cached_managers() -> list[str]:
+    return db.get_managers()
+
+@st.cache_data(ttl=300)
+def _cached_merchants(manager: Optional[str] = None) -> list[dict]:
+    return db.get_merchants(manager)
+
+@st.cache_data(ttl=300)
+def _cached_monthly(merchant_id: int, months: int = 0) -> list[dict]:
+    return db.get_monthly_data(merchant_id, months)
+
+@st.cache_data(ttl=300)
+def _cached_category_monthly(category: str) -> list[dict]:
+    return db.get_category_monthly(category)
+
+
 def render_merchant_selector(all_manager: bool = False) -> Optional[dict]:
-    managers = db.get_managers()
+    managers = _cached_managers()
     col1, col2 = st.columns([1, 2])
 
     with col1:
         manager_options = ["전체"] + managers
         selected_manager = st.selectbox("담당자", manager_options, key="manager_filter")
 
-    merchant_list = db.get_merchants(
+    merchant_list = _cached_merchants(
         None if selected_manager == "전체" else selected_manager
     )
 
@@ -91,7 +108,7 @@ def render_dashboard(merchant: dict):
     months_opt = st.select_slider(
         "표시 기간", options=[6, 12, 18, 24, 30], value=DEFAULT_MONTHS, key="months_slider"
     )
-    data = db.get_monthly_data(merchant["id"], months=months_opt)
+    data = _cached_monthly(merchant["id"], months=months_opt)
 
     if not data:
         st.warning("거래 데이터가 없습니다.")
@@ -160,7 +177,7 @@ def render_dashboard(merchant: dict):
     # Category benchmark
     cat = merchant.get("카테고리")
     if cat:
-        cat_data = db.get_category_monthly(cat)
+        cat_data = _cached_category_monthly(cat)
         cat_df = pd.DataFrame(cat_data)
         if len(cat_df["가맹점명"].unique()) >= MIN_BENCHMARK_COUNT:
             avg = cat_df.groupby("year_month")["거래액"].mean().reset_index()
