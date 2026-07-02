@@ -51,9 +51,13 @@ def _split_amount_count_cols(cols: list[str]) -> Tuple[dict, dict]:
     return amount_idx, count_idx
 
 
-def load_excel(file_path_or_buffer) -> Tuple[int, int]:
+BATCH_SIZE = 20  # 한 번에 커밋할 가맹점 수
+
+
+def load_excel(file_path_or_buffer, progress_callback=None) -> Tuple[int, int]:
     """
     Excel 파싱 후 DB upsert.
+    progress_callback(current, total): 진행상황 콜백 (선택)
     Returns: (merchant_count, row_count)
     """
     df_raw = pd.read_excel(
@@ -82,13 +86,19 @@ def load_excel(file_path_or_buffer) -> Tuple[int, int]:
     merchant_count = 0
     row_count = 0
 
+    # 유효 행만 미리 필터링
+    valid_rows = []
+    for _, row in df.iterrows():
+        name = str(row.get(MERCHANT_COL, "")).strip()
+        if not name or name in ("nan", "온라인 전체", "포인트플러스"):
+            continue
+        valid_rows.append(row)
+    total = len(valid_rows)
+
     conn = db.get_conn()
     try:
-        for _, row in df.iterrows():
+        for i, row in enumerate(valid_rows):
             name = str(row.get(MERCHANT_COL, "")).strip()
-            if not name or name in ("nan", "온라인 전체", "포인트플러스"):
-                continue
-            # 통합 매핑 적용
             name = MERCHANT_ALIASES.get(name, name)
 
             promo_raw = str(row.get(PROMO_COL, "")).strip()
@@ -131,7 +141,14 @@ def load_excel(file_path_or_buffer) -> Tuple[int, int]:
                 row_count += 1
 
             db.upsert_monthly(conn, monthly_rows)
-            conn.commit()  # 가맹점마다 커밋 (timeout 방지)
+
+            # BATCH_SIZE마다 한 번씩 커밋 (네트워크 왕복 최소화)
+            if (i + 1) % BATCH_SIZE == 0 or (i + 1) == total:
+                conn.commit()
+
+            if progress_callback:
+                progress_callback(i + 1, total)
+
     except Exception:
         try:
             conn.rollback()

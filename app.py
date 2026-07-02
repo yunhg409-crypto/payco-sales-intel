@@ -35,14 +35,25 @@ def render_sidebar():
             help="리스트(20260127) 시트가 포함된 PAYCO 가맹점 실적 파일",
         )
         if uploaded:
-            with st.spinner("파싱 중... (30초 내외 소요)"):
-                try:
-                    m_cnt, r_cnt = data_loader.load_excel(uploaded)
-                    st.success(f"✅ 완료: 가맹점 {m_cnt}개, {r_cnt:,}건 적재")
-                except ValueError as e:
-                    st.error(f"❌ 파싱 오류: {e}")
-                except Exception as e:
-                    st.error(f"❌ 오류: {e}")
+            progress_bar = st.progress(0, text="파싱 중...")
+            status_text = st.empty()
+            try:
+                def on_progress(current, total):
+                    pct = current / total
+                    progress_bar.progress(pct, text=f"저장 중... {current}/{total} 가맹점")
+                    status_text.caption(f"{current}/{total} 가맹점 처리됨")
+
+                m_cnt, r_cnt = data_loader.load_excel(uploaded, progress_callback=on_progress)
+                progress_bar.progress(1.0, text="완료!")
+                status_text.empty()
+                st.success(f"✅ 완료: 가맹점 {m_cnt}개, {r_cnt:,}건 적재")
+                st.rerun()
+            except ValueError as e:
+                progress_bar.empty()
+                st.error(f"❌ 파싱 오류: {e}")
+            except Exception as e:
+                progress_bar.empty()
+                st.error(f"❌ 오류: {e}")
 
         st.divider()
         st.caption("v0.2 — AI 전략 기능은 API 키 설정 후 사용 가능")
