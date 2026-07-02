@@ -5,15 +5,10 @@ from plotly.subplots import make_subplots
 import database as db
 
 
-@st.cache_data(ttl=300, show_spinner="데이터 로딩 중...")
 def _build_summary_df(months_back: int = 2) -> pd.DataFrame:
-    """모든 가맹점의 최근 데이터를 종합해 순위 DataFrame 반환. (5분 캐시)"""
-    merchants, monthly_all = db.get_all_data()  # DB 쿼리 2번으로 전체 로드
-    # merchant_id별로 월별 데이터 그룹핑
-    from collections import defaultdict
-    monthly_map = defaultdict(list)
-    for d in monthly_all:
-        monthly_map[d["merchant_id"]].append(d)
+    """세션 메모리에서 순위 DataFrame 구성 — DB 쿼리 없음."""
+    merchants = st.session_state.get("merchants", [])
+    monthly_map = st.session_state.get("monthly_map", {})
     rows = []
 
     for m in merchants:
@@ -210,7 +205,9 @@ def _render_merchant_trend(filtered_df: pd.DataFrame):
         return
     row = match.iloc[0]
     merchant_id = int(row["id"])
-    data = db.get_monthly_data(merchant_id, months=months)
+    monthly_map = st.session_state.get("monthly_map", {})
+    all_records = sorted(monthly_map.get(merchant_id, []), key=lambda r: r["year_month"])
+    data = all_records[-months:] if months > 0 else all_records
 
     if not data:
         st.warning("데이터가 없습니다.")

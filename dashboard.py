@@ -71,16 +71,18 @@ def _cached_category_monthly(category: str) -> list[dict]:
 
 
 def render_merchant_selector(all_manager: bool = False) -> Optional[dict]:
-    managers = _cached_managers()
-    col1, col2 = st.columns([1, 2])
+    all_merchants = st.session_state.get("merchants", [])
+    managers = sorted({m["담당자"] for m in all_merchants if m.get("담당자")})
 
+    col1, col2 = st.columns([1, 2])
     with col1:
         manager_options = ["전체"] + managers
         selected_manager = st.selectbox("담당자", manager_options, key="manager_filter")
 
-    merchant_list = _cached_merchants(
-        None if selected_manager == "전체" else selected_manager
-    )
+    if selected_manager == "전체":
+        merchant_list = all_merchants
+    else:
+        merchant_list = [m for m in all_merchants if m.get("담당자") == selected_manager]
 
     if not merchant_list:
         with col2:
@@ -108,7 +110,9 @@ def render_dashboard(merchant: dict):
     months_opt = st.select_slider(
         "표시 기간", options=[6, 12, 18, 24, 30], value=DEFAULT_MONTHS, key="months_slider"
     )
-    data = _cached_monthly(merchant["id"], months=months_opt)
+    monthly_map = st.session_state.get("monthly_map", {})
+    all_records = sorted(monthly_map.get(merchant["id"], []), key=lambda r: r["year_month"])
+    data = all_records[-months_opt:] if months_opt > 0 else all_records
 
     if not data:
         st.warning("거래 데이터가 없습니다.")
@@ -174,11 +178,18 @@ def render_dashboard(merchant: dict):
         secondary_y=True,
     )
 
-    # Category benchmark
+    # Category benchmark — session_state에서 직접 필터링
     cat = merchant.get("카테고리")
     if cat:
-        cat_data = _cached_category_monthly(cat)
-        cat_df = pd.DataFrame(cat_data)
+        all_merchants = st.session_state.get("merchants", [])
+        cat_ids = {m["id"] for m in all_merchants if m.get("카테고리") == cat}
+        cat_records = []
+        for mid, records in monthly_map.items():
+            if mid in cat_ids:
+                m_name = next((m["가맹점명"] for m in all_merchants if m["id"] == mid), "")
+                for r in records:
+                    cat_records.append({"year_month": r["year_month"], "거래액": r["거래액"], "가맹점명": m_name})
+        cat_df = pd.DataFrame(cat_records)
         if len(cat_df["가맹점명"].unique()) >= MIN_BENCHMARK_COUNT:
             avg = cat_df.groupby("year_month")["거래액"].mean().reset_index()
             avg = avg[avg["year_month"].isin(df["year_month"])]

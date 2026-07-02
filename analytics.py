@@ -16,28 +16,29 @@ import database as db
 # 데이터 빌더
 # ──────────────────────────────────────────────────────────────
 
-@st.cache_data(ttl=300, show_spinner="데이터 로딩 중...")
 def _build_full_df() -> pd.DataFrame:
-    """모든 가맹점 × 모든 월 데이터를 flat DataFrame으로 반환. (5분 캐시)"""
-    merchants, monthly_all = db.get_all_data()  # DB 쿼리 2번으로 전체 로드
+    """세션 메모리에서 flat DataFrame 구성 — DB 쿼리 없음."""
+    merchants = st.session_state.get("merchants", [])
+    monthly_map = st.session_state.get("monthly_map", {})
     m_map = {m["id"]: m for m in merchants}
     rows = []
-    for d in monthly_all:
-        m = m_map.get(d["merchant_id"])
+    for mid, records in monthly_map.items():
+        m = m_map.get(mid)
         if not m:
             continue
-        rows.append({
-            "id": m["id"],
-            "가맹점명": m["가맹점명"],
-            "업종": m.get("업종") or "-",
-            "카테고리": m.get("카테고리") or "-",
-            "담당자": m.get("담당자") or "-",
-            "기존신규": m.get("기존신규") or "-",
-            "year_month": d["year_month"],
-            "거래액": d["거래액"],
-            "거래건수": d["거래건수"],
-            "프로모션여부": d["프로모션여부"],
-        })
+        for d in records:
+            rows.append({
+                "id": mid,
+                "가맹점명": m["가맹점명"],
+                "업종": m.get("업종") or "-",
+                "카테고리": m.get("카테고리") or "-",
+                "담당자": m.get("담당자") or "-",
+                "기존신규": m.get("기존신규") or "-",
+                "year_month": d["year_month"],
+                "거래액": d["거래액"],
+                "거래건수": d["거래건수"],
+                "프로모션여부": d["프로모션여부"],
+            })
     df = pd.DataFrame(rows)
     if df.empty:
         return df
@@ -298,7 +299,11 @@ def _render_merchant_deep(full_df: pd.DataFrame, metrics_df: pd.DataFrame):
 
     m_row = metrics_df[metrics_df["가맹점명"] == sel].iloc[0]
     mid   = int(m_row["id"])
-    data  = db.get_monthly_data(mid, months=periods)
+    monthly_map = st.session_state.get("monthly_map", {})
+    all_records = monthly_map.get(mid, [])
+    data = sorted(all_records, key=lambda r: r["year_month"])
+    if periods > 0:
+        data = data[-periods:]
     if not data:
         st.warning("데이터 없음")
         return

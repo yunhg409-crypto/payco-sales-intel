@@ -244,7 +244,7 @@ def get_monthly_data(merchant_id: int, months: int = 0) -> list[dict]:
 
 
 def get_all_data() -> tuple[list[dict], list[dict]]:
-    """가맹점 + 전체 월별 데이터를 각각 1번의 쿼리로 반환. (130번 → 2번)"""
+    """가맹점 + 전체 월별 데이터를 단일 커넥션으로 2번 쿼리 반환."""
     conn = get_conn()
     try:
         cur = conn.cursor()
@@ -255,6 +255,25 @@ def get_all_data() -> tuple[list[dict], list[dict]]:
     finally:
         conn.close()
     return merchants, monthly_rows
+
+
+def get_all_data_joined() -> list[dict]:
+    """가맹점 + 월별 데이터를 JOIN 단일 쿼리로 반환. 네트워크 왕복 1번."""
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT
+                m.id, m.name, m.industry, m.category, m.manager, m.channel, m.merchant_type,
+                md.year_month, md.amount, md.count, md.has_promo
+            FROM merchants m
+            LEFT JOIN monthly_data md ON md.merchant_id = m.id
+            ORDER BY m.id, md.year_month
+        """)
+        rows = _rows(cur)
+    finally:
+        conn.close()
+    return rows
 
 
 def get_category_monthly(category: str) -> list[dict]:
